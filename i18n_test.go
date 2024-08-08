@@ -17,14 +17,22 @@ func newServer() *gin.Engine {
 	router.Use(Localize())
 
 	router.GET("/", func(context *gin.Context) {
-		context.String(http.StatusOK, MustGetMessage("welcome"))
+		context.String(http.StatusOK, MustGetMessage(context, "welcome"))
 	})
 
 	router.GET("/:name", func(context *gin.Context) {
-		context.String(http.StatusOK, MustGetMessage(&i18n.LocalizeConfig{
+		context.String(http.StatusOK, MustGetMessage(context, &i18n.LocalizeConfig{
 			MessageID: "welcomeWithName",
 			TemplateData: map[string]string{
 				"name": context.Param("name"),
+			},
+		}))
+	})
+	router.GET("/age/:age", func(context *gin.Context) {
+		context.String(http.StatusOK, MustGetMessage(context, i18n.LocalizeConfig{
+			MessageID: "welcomeWithAge",
+			TemplateData: map[string]string{
+				"age": context.Param("age"),
 			},
 		}))
 	})
@@ -35,9 +43,8 @@ func newServer() *gin.Engine {
 // makeRequest ...
 func makeRequest(
 	lng language.Tag,
-	name string,
+	path string,
 ) string {
-	path := "/" + name
 	req, _ := http.NewRequestWithContext(context.Background(), "GET", path, nil)
 	req.Header.Add("Accept-Language", lng.String())
 
@@ -52,7 +59,7 @@ func makeRequest(
 func TestI18nEN(t *testing.T) {
 	type args struct {
 		lng  language.Tag
-		name string
+		path string
 	}
 	tests := []struct {
 		name string
@@ -62,7 +69,7 @@ func TestI18nEN(t *testing.T) {
 		{
 			name: "hello world",
 			args: args{
-				name: "",
+				path: "/",
 				lng:  language.English,
 			},
 			want: "hello",
@@ -70,35 +77,24 @@ func TestI18nEN(t *testing.T) {
 		{
 			name: "hello alex",
 			args: args{
-				name: "alex",
+				path: "/alex",
 				lng:  language.English,
 			},
 			want: "hello alex",
 		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := makeRequest(tt.args.lng, tt.args.name); got != tt.want {
-				t.Errorf("makeRequest() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestI18nDE(t *testing.T) {
-	type args struct {
-		lng  language.Tag
-		name string
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
+		{
+			name: "18 years old",
+			args: args{
+				path: "/age/18",
+				lng:  language.English,
+			},
+			want: "I am 18 years old",
+		},
+		// German
 		{
 			name: "hallo",
 			args: args{
-				name: "",
+				path: "/",
 				lng:  language.German,
 			},
 			want: "hallo",
@@ -106,35 +102,24 @@ func TestI18nDE(t *testing.T) {
 		{
 			name: "hallo alex",
 			args: args{
-				name: "alex",
+				path: "/alex",
 				lng:  language.German,
 			},
 			want: "hallo alex",
 		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := makeRequest(tt.args.lng, tt.args.name); got != tt.want {
-				t.Errorf("makeRequest() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestI18nFR(t *testing.T) {
-	type args struct {
-		lng  language.Tag
-		name string
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
+		{
+			name: "18 jahre alt",
+			args: args{
+				path: "/age/18",
+				lng:  language.German,
+			},
+			want: "ich bin 18 Jahre alt",
+		},
+		// French
 		{
 			name: "bonjour",
 			args: args{
-				name: "",
+				path: "/",
 				lng:  language.French,
 			},
 			want: "bonjour",
@@ -142,15 +127,23 @@ func TestI18nFR(t *testing.T) {
 		{
 			name: "bonjour alex",
 			args: args{
-				name: "alex",
+				path: "/alex",
 				lng:  language.French,
 			},
 			want: "bonjour alex",
 		},
+		{
+			name: "18 ans",
+			args: args{
+				path: "/age/18",
+				lng:  language.French,
+			},
+			want: "j'ai 18 ans",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := makeRequest(tt.args.lng, tt.args.name); got != tt.want {
+			if got := makeRequest(tt.args.lng, tt.args.path); got != tt.want {
 				t.Errorf("makeRequest() = %v, want %v", got, tt.want)
 			}
 		})

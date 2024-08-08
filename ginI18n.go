@@ -1,10 +1,9 @@
 package i18n
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
+	"path"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -15,15 +14,14 @@ var _ GinI18n = (*ginI18nImpl)(nil)
 
 type ginI18nImpl struct {
 	bundle          *i18n.Bundle
-	currentContext  *gin.Context
 	localizerByLng  map[string]*i18n.Localizer
 	defaultLanguage language.Tag
 	getLngHandler   GetLngHandler
 }
 
 // getMessage get localize message by lng and messageID
-func (i *ginI18nImpl) getMessage(param interface{}) (string, error) {
-	lng := i.getLngHandler(i.currentContext, i.defaultLanguage.String())
+func (i *ginI18nImpl) getMessage(ctx *gin.Context, param interface{}) (string, error) {
+	lng := i.getLngHandler(ctx, i.defaultLanguage.String())
 	localizer := i.getLocalizerByLng(lng)
 
 	localizeConfig, err := i.getLocalizeConfig(param)
@@ -40,13 +38,9 @@ func (i *ginI18nImpl) getMessage(param interface{}) (string, error) {
 }
 
 // mustGetMessage ...
-func (i *ginI18nImpl) mustGetMessage(param interface{}) string {
-	message, _ := i.getMessage(param)
+func (i *ginI18nImpl) mustGetMessage(ctx *gin.Context, param interface{}) string {
+	message, _ := i.getMessage(ctx, param)
 	return message
-}
-
-func (i *ginI18nImpl) setCurrentContext(ctx context.Context) {
-	i.currentContext = ctx.(*gin.Context)
 }
 
 func (i *ginI18nImpl) setBundle(cfg *BundleCfg) {
@@ -67,20 +61,20 @@ func (i *ginI18nImpl) setGetLngHandler(handler GetLngHandler) {
 // loadMessageFiles load all file localize to bundle
 func (i *ginI18nImpl) loadMessageFiles(config *BundleCfg) {
 	for _, lng := range config.AcceptLanguage {
-		path := filepath.Join(config.RootPath, lng.String()) + "." + config.FormatBundleFile
-		if err := i.loadMessageFile(config, path); err != nil {
+		src := path.Join(config.RootPath, lng.String()) + "." + config.FormatBundleFile
+		if err := i.loadMessageFile(config, src); err != nil {
 			panic(err)
 		}
 	}
 }
 
-func (i *ginI18nImpl) loadMessageFile(config *BundleCfg, path string) error {
-	buf, err := config.Loader.LoadMessage(path)
+func (i *ginI18nImpl) loadMessageFile(config *BundleCfg, src string) error {
+	buf, err := config.Loader.LoadMessage(src)
 	if err != nil {
 		return err
 	}
 
-	if _, err = i.bundle.ParseMessageFileBytes(buf, path); err != nil {
+	if _, err = i.bundle.ParseMessageFileBytes(buf, src); err != nil {
 		return err
 	}
 	return nil
@@ -138,6 +132,8 @@ func (i *ginI18nImpl) getLocalizeConfig(param interface{}) (*i18n.LocalizeConfig
 		return localizeConfig, nil
 	case *i18n.LocalizeConfig:
 		return paramValue, nil
+	case i18n.LocalizeConfig:
+		return &paramValue, nil
 	}
 
 	msg := fmt.Sprintf("un supported localize param: %v", param)

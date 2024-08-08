@@ -1,0 +1,5 @@
+{
+  "welcome": "hello",
+  "welcomeWithName": "hello {{ .name }}",
+  "welcomeWithAge": "I am {{ .age }} years old"
+}
